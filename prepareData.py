@@ -59,7 +59,7 @@ gpx_tracks_stats = []
 for track in gpx_tracks_list:
     gpx_tracks_stats.append(gpxStats.GpxStats(track))
     
-with open('Data/hiking_data.csv', 'w') as csvfile:
+with open('hiking_data.csv', 'w') as csvfile:
     datawriter = csv.writer(csvfile, delimiter=' ')
     datawriter.writerow(gpxStats.GpxStats.getHeader())
     datawriter.writerows([track_stats.toList() for track_stats in gpx_tracks_stats])
