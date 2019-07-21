@@ -83,15 +83,19 @@ normed_inference_data = (inference_data.values - train_stats['mean'].values) \
 
 # Load the model and compute hiking time
 imported_model = keras.models.load_model('model_hikingTimePrediction.h5')
-predicted_hiking_time_s = imported_model.predict(normed_inference_data).flatten()[0]
+predicted_hiking_times_s = imported_model.predict(normed_inference_data)[0]
 
 # Compute standard estimate for comparison
 standard_estimate_hiking_time = utils.compute_standard_walking_time(gpx_tracks_stats[0].length2d,
                                                         gpx_tracks_stats[0].total_uphill,
                                                         gpx_tracks_stats[0].total_downhill)
 
-print('The predicted hiking time is',
-      round(predicted_hiking_time_s / 3600, 2), 'h.')
+print('The predicted moving time for the hike is',
+      round(predicted_hiking_times_s[0] / 3600, 2), 'h.')
+print('The predicted stopping time for the hike is',
+      round(predicted_hiking_times_s[1] / 3600, 2), 'h.')
+print('The predicted total duration of the hike is',
+      round(predicted_hiking_times_s[2] / 3600, 2), 'h.')
 print('The result of the standard estimate is',
         round(standard_estimate_hiking_time / 3600, 2), 'h.')
 
