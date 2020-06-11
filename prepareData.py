@@ -1,67 +1,74 @@
-#@title MIT License
-#
-# Copyright (c) 2019 Andreas Eberlein
-#
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
-
-import gpxpy
+import os
 import csv
 import argparse
+import glob
+
+import gpxpy
 
 import gpxStats
-import read_directory_recursively
 
-description_string='Prepare data for estimation of walking time for hiking route described by GPX track.'
-parser = argparse.ArgumentParser(description=description_string)
-parser.add_argument('base_folder', help='Name of base folder to be searched recursively for tracks.')
-parser.add_argument('filter_key', help='Key for filtering GPX tracks, should be in path (for example \"Hiking\")')
-cmd_line_args = vars(parser.parse_args())
 
-base_folder = cmd_line_args['base_folder']
-filter_key = cmd_line_args['filter_key']
-print('Recursively searching for GPX files in \"' + base_folder + '\".')
-print('and filtering files that contain \"' + filter_key + '\" in their path.')
+def parse_command_line_arguments():
 
-file_list = read_directory_recursively.getFileList(base_folder)
+    description_string = 'Prepare data for estimation of walking times from GPX tracks.'
+    parser = argparse.ArgumentParser(description=description_string)
+    parser.add_argument('base_folder',
+                        help='Name of base folder to be searched recursively for tracks.')
+    parser.add_argument('filter_key', help='Key for filtering GPX tracks,'
+                        'should be in path (for example \"Hiking\")')
+    cmd_line_args = vars(parser.parse_args())
 
-# Create list with all files that contain Wandern (=Hiking) in their path
-file_list_filtered = [file_path for file_path in file_list if filter_key in file_path]
+    return cmd_line_args['base_folder'], cmd_line_args['filter_key']
+
+
+base_folder, filter_key = parse_command_line_arguments()
+print('Recursively searching for GPX files in \'{}\''.format(base_folder))
+print('and filtering files that contain \'{}\' in their path.'.format(filter_key))
+
+# Create list with all gpx files from base_folder that contain filter_key in their path
+file_list_filtered = [file_path for file_path in glob.iglob(os.path.join(base_folder, '**'), recursive=True) 
+                      if file_path.endswith('.gpx') and filter_key in file_path]
 
 # Parse gpx files
 gpx_file_list = gpxStats.parseGpxFiles(file_list_filtered)
 
 # Generate list of tracks in files
-gpx_tracks_list = []
+gpx_segments_list = []
 for gpx_file in gpx_file_list:
-    for gpx_track in gpx_file.tracks:
-        gpx_tracks_list.append(gpx_track)
-        
-print("Finished reading", len(gpx_tracks_list), " tracks.")
+    for track in gpx_file.tracks:
+        for segment in track.segments:
+            gpx_segments_list.append(segment)
+        # gpx_segments_list.append(track)
+
+print("Finished reading", len(gpx_segments_list), "segments.")
+
+gpx_split_segments_list = gpxStats.split_segments(gpx_segments_list)
 
 # Get track statistics
-gpx_tracks_stats = []
-for track in gpx_tracks_list:
-    gpx_tracks_stats.append(gpxStats.GpxStats(track))
-    
+gpx_stats = []
+for segment in gpx_split_segments_list:
+    seg_stats = gpxStats.GpxStats(segment)
+    if (seg_stats.moving_time > seg_stats.stopped_time):
+        gpx_stats.append(seg_stats)
+
 with open('hiking_data.csv', 'w') as csvfile:
     datawriter = csv.writer(csvfile, delimiter=' ')
     datawriter.writerow(gpxStats.GpxStats.getHeader())
-    datawriter.writerows([track_stats.toList() for track_stats in gpx_tracks_stats])
+    datawriter.writerows([seg_stats.toList() for seg_stats in gpx_stats])
 
 print("Finished writing statistics about tracks to csv file.")
+
+# Insights from analyzing data:
+# - Max speed does not contain useful information for estimating times
+# - There are a few segments with much higher stopping time than moving time, which
+#   presumably result from breaks. These are not very useful for estimating the hiking
+#   times as the stopped time can be an order of magnitude larger than the moving time.
+#   Thus, we exclude such cases above
+#move_list = []
+#stop_list = []
+#for segment in gpx_split_segments_list:
+    #move_list.append(segment.get_moving_data().moving_time)
+    #stop_list.append(segment.get_moving_data().stopped_time)
+#diff_time_list = [(move - stop) for move, stop in zip(move_list, stop_list)]
+#import matplotlib.pyplot as plt
+#plt.hist(diff_time_list, 250)
