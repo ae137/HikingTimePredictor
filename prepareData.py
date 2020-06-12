@@ -2,14 +2,19 @@ import os
 import csv
 import argparse
 import glob
+from typing import Tuple
 
 import gpxpy
 
 import gpxStats
 
 
-def parse_command_line_arguments():
+def parse_command_line_arguments() -> Tuple[str, str]:
+    """
+    Parse command line arguments.
 
+    :return:    Name of base folder and filter key as stings
+    """
     description_string = 'Prepare data for estimation of walking times from GPX tracks.'
     parser = argparse.ArgumentParser(description=description_string)
     parser.add_argument('base_folder',
@@ -38,11 +43,12 @@ for gpx_file in gpx_file_list:
     for track in gpx_file.tracks:
         for segment in track.segments:
             gpx_segments_list.append(segment)
-        # gpx_segments_list.append(track)
 
 print("Finished reading", len(gpx_segments_list), "segments.")
 
-gpx_split_segments_list = gpxStats.split_segments(gpx_segments_list)
+# gpx_segments_filtered_list = gpxStats.filter_segments(gpx_segments_list)
+
+gpx_split_segments_list = gpxStats.split_segments(gpx_segments_filtered_list)
 
 # Get track statistics
 gpx_stats = []

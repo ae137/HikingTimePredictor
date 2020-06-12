@@ -1,7 +1,8 @@
-import gpxpy
 import math
 import collections
+from typing import List
 
+import gpxpy
 
 
 class GpxStats(object):
@@ -19,9 +20,9 @@ class GpxStats(object):
         self.total_downhill = track.get_uphill_downhill().downhill
 
     def toList(self):
-        entry = [self.name, self.length2d, self.length3d, self.duration, \
-                 self.moving_time, self.stopped_time, \
-                     self.total_uphill, self.total_downhill]
+        entry = [self.name, self.length2d, self.length3d, self.duration,
+                 self.moving_time, self.stopped_time,
+                 self.total_uphill, self.total_downhill]
         return entry
 
     @classmethod
@@ -30,50 +31,64 @@ class GpxStats(object):
                 'MovingTime', 'StoppedTime',
                 'TotalUphill', 'TotalDownhill']
 
+
 def parseGpxFiles(file_name_list):
     gpx_files = []
     for file_name in file_name_list:
-        gpx_file = open(file_name, 'r')
-        gpx_files.append(gpxpy.parse(gpx_file))
+        with open(file_name, 'r') as gpx_file:
+            gpx_files.append(gpxpy.parse(gpx_file))
 
     return gpx_files
 
-def split_segments_points(gpx_segments_list):
-    gpx_split_segments_list = []
+
+def filter_segments(gpx_segments_list: List[gpxpy.gpx.GPXTrackSegment], min_distance_m: float = 5) \
+        -> List[gpxpy.gpx.GPXTrackSegment]:
+    """
+    Filter points from GPX track segments that are too close to each other
+
+    :param: gpx_segments_list:      List of GPX track segments to be processed
+    :param: min_distance_m:         Minimum distance between consecutive track points after filtering
+
+    :return: List of GPX track segments that are all shorter than max_length_m
+    """
+    gpx_filtered_segments_list = []
+
     for segment in gpx_segments_list:
-        length_km = segment.length_2d() / 1000
-        num_low = math.floor(length_km)
-        num_high = math.ceil(length_km)
+        points = [segment.points[0]]
+        last_kept = segment.points[0]
 
-        len_points_low = len(segment.points) // num_low
-        len_points_high = len(segment.points) // num_high
+        for point in segment.points[1:]:
+            if gpxpy.gpx.GPXTrackSegment([last_kept, point]).length_2d() > min_distance_m:
+                points.append(point)
+                last_kept = point
 
-        for i in range(num_low):
-            part = gpxpy.gpx.GPXTrackSegment(segment.points[i * len_points_low:
-                                                                (i+1) * len_points_low])
-            gpx_split_segments_list.append(part)
+        gpx_filtered_segments_list.append(gpxpy.gpx.GPXTrackSegment(points))
 
-        for i in range(num_high):
-            part = gpxpy.gpx.GPXTrackSegment(segment.points[i * len_points_high:
-                                                                (i+1) * len_points_high])
-            gpx_split_segments_list.append(part)
+    return gpx_filtered_segments_list
 
-    return gpx_split_segments_list
 
-def split_segments(gpx_segments_list):
+def split_segments(gpx_segments_list: List[gpxpy.gpx.GPXTrackSegment], max_length_m: int = 100) \
+        -> List[gpxpy.gpx.GPXTrackSegment]:
+    """
+    Split GPX track segments until all are shorter than max_length_m
+
+    :param: gpx_segments_list:      List of GPX track segments to be processed
+    :param: max_length_m:           Maximum length of track segment above which the segment should be split
+
+    :return: List of GPX track segments that are all shorter than max_length_m
+    """
     gpx_split_segments_list = []
 
-    max_length_m = 100 # 1000
     buffer = collections.deque(gpx_segments_list)
 
     while len(buffer) > 0:
         segment = buffer.popleft()
+
         if segment.length_2d() < max_length_m:
             gpx_split_segments_list.append(segment)
+
         else:
-            buffer.append(gpxpy.gpx.GPXTrackSegment(
-                segment.points[0:len(segment.points)//2]))
-            buffer.append(gpxpy.gpx.GPXTrackSegment(
-                segment.points[len(segment.points)//2:]))
+            buffer.append(gpxpy.gpx.GPXTrackSegment(segment.points[:len(segment.points)//2]))
+            buffer.append(gpxpy.gpx.GPXTrackSegment(segment.points[len(segment.points)//2:]))
 
     return gpx_split_segments_list
