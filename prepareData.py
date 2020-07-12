@@ -1,12 +1,14 @@
 import os
-import csv
 import argparse
 import glob
-from typing import Tuple
+import copy
+import random
+from typing import Tuple, List
 
-import gpxpy
+import h5py   # type: ignore
+import gpxpy  # type: ignore
 
-import gpxStats
+import gpx_stats
 
 
 def parse_command_line_arguments() -> Tuple[str, str]:
@@ -26,55 +28,50 @@ def parse_command_line_arguments() -> Tuple[str, str]:
     return cmd_line_args['base_folder'], cmd_line_args['filter_key']
 
 
+def get_gpx_file_list(base_folder: str, filter_key: str) -> List[str]:
+    return [file_path for file_path in glob.iglob(os.path.join(base_folder, '**'), recursive=True)
+            if file_path.endswith('.gpx') and filter_key in file_path]
+
+
+def write_data_to_hdf5(gpx_stats: List[gpx_stats.GpxSegmentStats], file_name: str, num_points_path: int) -> None:
+    with h5py.File(file_name, "w") as hdf5file:
+        dataset_items = {}
+        for name in gpx_stats.GpxSegmentStats.getHeader():
+            shape = (len(gpx_stats), num_points_path, 3) if 'Path' in name else (len(gpx_stats),)
+            dataset_items[name] = hdf5file.create_dataset(name, shape, dtype=float)
+
+        for i in range(len(gpx_stats)):
+            stats = gpx_stats[i].toDict()
+            for name in stats.keys():
+                dataset_items[name][i] = stats[name]
+
+
+num_points_path = 25
+min_distance_m = 4
+max_length_m = 100  # 150 # 100
+
 base_folder, filter_key = parse_command_line_arguments()
 print('Recursively searching for GPX files in \'{}\''.format(base_folder))
 print('and filtering files that contain \'{}\' in their path.'.format(filter_key))
 
 # Create list with all gpx files from base_folder that contain filter_key in their path
-file_list_filtered = [file_path for file_path in glob.iglob(os.path.join(base_folder, '**'), recursive=True) 
-                      if file_path.endswith('.gpx') and filter_key in file_path]
+file_list_filtered = get_gpx_file_list(base_folder, filter_key)
 
-# Parse gpx files
-gpx_file_list = gpxStats.parseGpxFiles(file_list_filtered)
+# Parse gpx files and return track segments
+gpx_segments_list = gpx_stats.parse_gpx_files_return_segments(file_list_filtered)
+gpx_stats.smoothen_coordinates(gpx_segments_list)
 
-# Generate list of tracks in files
-gpx_segments_list = []
-for gpx_file in gpx_file_list:
-    for track in gpx_file.tracks:
-        for segment in track.segments:
-            gpx_segments_list.append(segment)
-
-print("Finished reading", len(gpx_segments_list), "segments.")
-
-# gpx_segments_filtered_list = gpxStats.filter_segments(gpx_segments_list)
-
-gpx_split_segments_list = gpxStats.split_segments(gpx_segments_filtered_list)
+gpx_segments_filtered_list = gpx_stats.filter_segments(gpx_segments_list, min_distance_m=min_distance_m)
+gpx_split_segments_list = gpx_stats.split_segments_by_length(gpx_segments_filtered_list, max_length_m=max_length_m)
 
 # Get track statistics
-gpx_stats = []
-for segment in gpx_split_segments_list:
-    seg_stats = gpxStats.GpxStats(segment)
-    if (seg_stats.moving_time > seg_stats.stopped_time):
-        gpx_stats.append(seg_stats)
+gpx_stats = gpx_stats.extract_stats(gpx_split_segments_list, num_points_path=num_points_path)
 
-with open('hiking_data.csv', 'w') as csvfile:
-    datawriter = csv.writer(csvfile, delimiter=' ')
-    datawriter.writerow(gpxStats.GpxStats.getHeader())
-    datawriter.writerows([seg_stats.toList() for seg_stats in gpx_stats])
+random.shuffle(gpx_stats)
 
-print("Finished writing statistics about tracks to csv file.")
+max_idx_training_set = int(0.8 * len(gpx_stats))
 
-# Insights from analyzing data:
-# - Max speed does not contain useful information for estimating times
-# - There are a few segments with much higher stopping time than moving time, which
-#   presumably result from breaks. These are not very useful for estimating the hiking
-#   times as the stopped time can be an order of magnitude larger than the moving time.
-#   Thus, we exclude such cases above
-#move_list = []
-#stop_list = []
-#for segment in gpx_split_segments_list:
-    #move_list.append(segment.get_moving_data().moving_time)
-    #stop_list.append(segment.get_moving_data().stopped_time)
-#diff_time_list = [(move - stop) for move, stop in zip(move_list, stop_list)]
-#import matplotlib.pyplot as plt
-#plt.hist(diff_time_list, 250)
+write_data_to_hdf5(gpx_stats[:max_idx_training_set], 'hiking_data_training.hdf5', num_points_path)
+write_data_to_hdf5(gpx_stats[max_idx_training_set:], 'hiking_data_test.hdf5', num_points_path)
+
+print("Finished writing statistics about tracks to hdf5 file.")
