@@ -6,10 +6,12 @@ from gpxpy.gpx import GPXTrackPoint, GPXTrackSegment  # type: ignore
 
 
 def gpx_point_to_array(point: GPXTrackPoint) -> np.array:
+    "Convert a GPX point to an array."
     return np.array([point.longitude, point.latitude, point.elevation])
 
 
 def gpx_point_from_array(point_data: np.array) -> GPXTrackPoint:
+    "Create a GPXTrackPoint from an array."
     return GPXTrackPoint(longitude=point_data[0], latitude=point_data[1], elevation=point_data[2])
 
 

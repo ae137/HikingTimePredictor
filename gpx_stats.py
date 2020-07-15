@@ -1,6 +1,6 @@
 import math
 import collections
-from typing import List, Sequence
+from typing import List, Sequence, Dict, Union
 import statistics
 
 from gpxpy import parse                # type: ignore
@@ -12,6 +12,7 @@ from utils import compute_standard_walking_time
 
 
 class PathFeature:
+    "Wrapper class for storing array data in pd.DataFrame."
     def __init__(self, data: np.array):
         self.array_data = data
 
@@ -26,7 +27,7 @@ class PathFeature:
 
 def convert_path_to_feature(segment: GPXTrackSegment, num_points_path: int) -> np.array:
     """
-    Convert GPX track segment to feature
+    Convert GPX track segment to feature.
 
     :param: segment:         GPX track segment
     :param: num_points_path: Maximal length of track points in path feature
@@ -59,8 +60,26 @@ def convert_path_to_feature(segment: GPXTrackSegment, num_points_path: int) -> n
     return data
 
 
+def convert_paths_to_array(path_features: List[PathFeature]) -> np.array:
+    """
+    Convert a list of PathFeature objects to an array.
+
+    :param: path_features:  List of PathFeature objects
+    :return:                Array of shape (len(path_features), path_features[0].shape)
+    """
+    return np.array([path_data.data for path_data in path_features])
+
+
 class GpxSegmentStats(object):
-    def __init__(self, segment: GPXTrackSegment, num_points_path: int = 25):
+    "Object collecting statistical properties of a GPX segment."
+
+    def __init__(self, segment: GPXTrackSegment, num_points_path: int = 25) -> None:
+        """
+        Construct GpxSegmentStats object.
+        
+        :param: segment:         GPX track segment
+        :param: num_points_path: Maximal length of points in path features
+        """
         self.name = getattr(segment, 'name', 'NotAvailable')
         self.length2d = segment.length_2d()
         self.length3d = segment.length_3d()
@@ -74,13 +93,15 @@ class GpxSegmentStats(object):
 
         self.path = convert_path_to_feature(segment, num_points_path)
 
-    def toList(self):
+    def toList(self) -> List[Union[float, PathFeature]]:
+        "Convert GpxSegmentStats object data to list."
         entry = [self.length2d, self.length3d, self.duration,
                  self.moving_time, self.stopped_time,
                  self.total_uphill, self.total_downhill, self.path]
         return entry
 
-    def toDict(self):
+    def toDict(self) -> Dict[str, Union[float, PathFeature]]:
+        "Convert GpxSegmentStats object data to dictionary."
         entry = {'Length2d': self.length2d, 'Length3d': self.length3d,
                  'MovingTime': self.moving_time, 'StoppedTime': self.stopped_time, 'Duration': self.duration,
                  'TotalUphill': self.total_uphill, 'TotalDownhill': self.total_downhill,
@@ -89,6 +110,7 @@ class GpxSegmentStats(object):
 
     @classmethod
     def getHeader(cls):
+        "Return names of data entries."
         return ['Length2d', 'Length3d', 'Duration',
                 'MovingTime', 'StoppedTime',
                 'TotalUphill', 'TotalDownhill', 'Path']
@@ -105,7 +127,7 @@ def parse_gpx_files(file_name_list: List[str]):
             yield parse(gpx_file)
 
 
-def get_segments(gpx_file_content_list):
+def get_segments(gpx_file_content_list) -> List[str]:
     gpx_segments_list = []
     for gpx_file_content in gpx_file_content_list:
         for track in gpx_file_content.tracks:
@@ -118,6 +140,12 @@ def get_segments(gpx_file_content_list):
 
 
 def parse_gpx_files_return_segments(file_name_list: List[str]) -> List[GPXTrackSegment]:
+    """
+    Parse GPX files and return list of GPX track segments
+    
+    :param: file_name_list: List of GPX files
+    :return: List of GPXTrackSegment objects
+    """
     gpx_file_contents = parse_gpx_files(file_name_list)
     return get_segments(gpx_file_contents)
 

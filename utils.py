@@ -1,3 +1,4 @@
+import numpy as np               # type: ignore
 import pandas as pd              # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
 
@@ -21,7 +22,14 @@ def compute_standard_walking_time(length_m: float, elevation_gain_m: float, elev
         0.5 * min(walking_time_length_s, walking_time_up_down_s)
 
 
-def scatter_plot(ground_truth, predictions, label_text):
+def scatter_plot(ground_truth: np.array, predictions: np.array, label_text: str) -> None:
+    """
+    Plot scatter plot of predictions vs. ground truth values.
+
+    :param: ground_truth:   Array containing ground truth data
+    :param: predictions:    Array containing predicted values
+    :param: label_text:     Label text for plot
+    """
     plt.scatter(ground_truth, predictions, label='{} scatter plot'.format(label_text))
     max_val = max([max(ground_truth), max(predictions)])
     plt.xlabel('True Values [{}]'.format(label_text))
@@ -34,7 +42,14 @@ def scatter_plot(ground_truth, predictions, label_text):
     plt.show()
 
 
-def plot_error_hist(ground_truth, predictions, label_text):
+def plot_error_hist(ground_truth: np.array, predictions: np.array, label_text: str) -> None:
+    """
+    Plot historgram of errors.
+
+    :param: ground_truth:   Array containing ground truth data
+    :param: predictions:    Array containing predicted values
+    :param: label_text:     Label text for plot
+    """
     error = ground_truth - predictions
     plt.xlabel("Prediction Error [{}]".format(label_text))
     plt.ylabel("Count")
@@ -43,6 +58,11 @@ def plot_error_hist(ground_truth, predictions, label_text):
 
 
 def plot_history(history):
+    """
+    Plot learning curve.
+
+    :param: history: Keras History object
+    """
     hist = pd.DataFrame(history.history)
     hist['epoch'] = history.epoch
 
