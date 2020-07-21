@@ -245,7 +245,7 @@ def extract_stats(gpx_segments_list: List[GPXTrackSegment], num_points_path: int
     gpx_stats = []
     for segment in gpx_segments_list:
         segment_stats = GpxSegmentStats(segment, num_points_path)
-        if (segment_stats.moving_time > segment_stats.stopped_time):
+        if (segment_stats.moving_time >= segment_stats.stopped_time):
             gpx_stats.append(segment_stats)
 
     return gpx_stats
