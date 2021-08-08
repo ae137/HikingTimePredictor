@@ -1,6 +1,7 @@
 absl-py==0.13.0
 apt-xapian-index==0.49
 argon2-cffi==20.1.0
+astroid==2.6.6
 astunparse==1.6.3
 async-generator==1.10
 attrs==21.2.0
@@ -38,13 +39,14 @@ gpxpy==1.4.2
 grpcio==1.34.1
 h5py==3.1.0
 html5lib==1.1
-httplib2==0.18.1
+httplib2==0.19.0
 idna==2.10
 iniconfig==1.1.1
 ipykernel==6.0.3
 ipython==7.26.0
 ipython-genutils==0.2.0
 ipywidgets==7.6.3
+isort==5.9.3
 jedi==0.18.0
 jeepney==0.6.0
 Jinja2==3.0.1
@@ -63,6 +65,7 @@ language-selector==0.1
 launchpadlib==1.10.13
 lazr.restfulclient==0.14.2
 lazr.uri==1.0.5
+lazy-object-proxy==1.6.0
 lxml==4.6.3
 Markdown==3.3.4
 Markups==3.1.1
@@ -87,10 +90,11 @@ packaging==21.0
 pandas==1.3.1
 pandocfilters==1.4.3
 parso==0.8.2
+pbr==5.6.0
 pep8==1.7.1
 pexpect==4.8.0
 pickleshare==0.7.5
-Pillow==8.1.2
+Pillow==8.2.0
 pluggy==0.13.1
 prometheus-client==0.11.0
 prompt-toolkit==3.0.19
@@ -106,9 +110,10 @@ pycparser==2.20
 pycups==2.0.1
 pyenchant==3.2.0
 pyflakes==2.2.0
-Pygments==2.7.1
+Pygments==2.7.4
 PyGObject==3.38.0
 PyJWT==1.7.1
+pylint==2.9.6
 pyparsing==2.4.7
 PyQt5==5.15.4
 PyQt5-sip==12.8.1
@@ -119,7 +124,7 @@ python-dateutil==2.8.2
 python-debian==0.1.39
 python-markdown-math==0.8
 pytz==2021.1
-PyYAML==5.3.1
+PyYAML==5.4
 pyzmq==22.2.1
 qtconsole==5.1.1
 QtPy==1.9.0
@@ -147,6 +152,7 @@ tensorflow-estimator==2.5.0
 termcolor==1.1.0
 terminado==0.10.1
 testpath==0.5.0
+testresources==2.0.1
 textile==4.0.1
 toml==0.10.1
 tornado==6.1
