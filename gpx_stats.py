@@ -1,3 +1,5 @@
+"""Helper functions for computing statistical properties of GPX tracks."""
+
 import collections
 from typing import List, Dict, Union
 import statistics
@@ -16,10 +18,12 @@ class PathFeature:
 
     @property
     def shape(self):
+        """Get shape of path features as array."""
         return self.array_data.shape
 
     @property
     def data(self):
+        """Get path features as array."""
         return self.array_data
 
 
@@ -50,10 +54,10 @@ def convert_path_to_feature(segment: GPXTrackSegment, num_points_path: int) -> n
     # Compute center of gravity of path
     center = np.sum(data, axis=0) / len(segment.points)
     phi = np.arctan2(center[1], center[0])
-    m = _get_rotation_matrix(-phi)      # Return points with angle that maps center to x-axis
+    rot_matrix = _get_rotation_matrix(-phi)      # Return points with angle that maps center to x-axis
 
     for idx in range(len(segment.points)):
-        data[idx][0:2] = np.dot(m, data[idx][0:2])
+        data[idx][0:2] = np.dot(rot_matrix, data[idx][0:2])
 
     return data
 
@@ -68,13 +72,13 @@ def convert_paths_to_array(path_features: List[PathFeature]) -> np.array:
     return np.array([path_data.data for path_data in path_features])
 
 
-class GpxSegmentStats(object):
+class GpxSegmentStats:
     "Object collecting statistical properties of a GPX segment."
 
     def __init__(self, segment: GPXTrackSegment, num_points_path: int = 25) -> None:
         """
         Construct GpxSegmentStats object.
-        
+
         :param: segment:         GPX track segment
         :param: num_points_path: Maximal length of points in path features
         """
@@ -91,14 +95,14 @@ class GpxSegmentStats(object):
 
         self.path = convert_path_to_feature(segment, num_points_path)
 
-    def toList(self) -> List[Union[float, PathFeature]]:
+    def to_list(self) -> List[Union[float, PathFeature]]:
         "Convert GpxSegmentStats object data to list."
         entry = [self.length2d, self.length3d, self.duration,
                  self.moving_time, self.stopped_time,
                  self.total_uphill, self.total_downhill, self.path]
         return entry
 
-    def toDict(self) -> Dict[str, Union[float, PathFeature]]:
+    def to_dict(self) -> Dict[str, Union[float, PathFeature]]:
         "Convert GpxSegmentStats object data to dictionary."
         entry = {'Length2d': self.length2d, 'Length3d': self.length3d,
                  'MovingTime': self.moving_time, 'StoppedTime': self.stopped_time, 'Duration': self.duration,
@@ -107,7 +111,7 @@ class GpxSegmentStats(object):
         return entry
 
     @classmethod
-    def getHeader(cls):
+    def get_header(cls):
         "Return names of data entries."
         return ['Length2d', 'Length3d', 'Duration',
                 'MovingTime', 'StoppedTime',
@@ -125,7 +129,8 @@ def parse_gpx_files(file_name_list: List[str]):
             yield parse(gpx_file)
 
 
-def get_segments(gpx_file_content_list) -> List[str]:
+def get_segments(gpx_file_content_list):
+    # TODO: Add docstring
     gpx_segments_list = []
     for gpx_file_content in gpx_file_content_list:
         for track in gpx_file_content.tracks:
@@ -251,12 +256,13 @@ def filter_bad_segments(gpx_segments_list: List[GPXTrackSegment]) -> List[GPXTra
     def _elevation_predicate(segment: GPXTrackSegment, max_elevation_diff: int) -> bool:
         uphill, downhill = segment.get_uphill_downhill()
 
-        return (uphill < max_elevation_diff and downhill < max_elevation_diff)
+        return uphill < max_elevation_diff and downhill < max_elevation_diff
 
     return list(filter(lambda segment: _elevation_predicate(segment, 500), gpx_segments_list))
 
 
-def extract_stats(gpx_segments_list: List[GPXTrackSegment], num_points_path: int = 25) -> List[GpxSegmentStats]:
+def extract_stats(gpx_segments_list: List[GPXTrackSegment],
+                  num_points_path: int = 25) -> List[GpxSegmentStats]:
     """
     Extract some properties of GPX track segments
 
@@ -269,7 +275,10 @@ def extract_stats(gpx_segments_list: List[GPXTrackSegment], num_points_path: int
     for segment in gpx_segments_list:
         segment_stats = GpxSegmentStats(segment, num_points_path)
 
-        if (segment_stats.moving_time >= segment_stats.stopped_time):
-            gpx_stats.append(segment_stats)
+        # # Following filtering is only necessary, if prediction of stopped time and duration is attempted
+        # if (segment_stats.moving_time >= segment_stats.stopped_time):
+        #     gpx_stats.append(segment_stats)
+
+        gpx_stats.append(segment_stats)
 
     return gpx_stats

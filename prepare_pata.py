@@ -3,12 +3,17 @@
 import os
 import argparse
 import glob
-from typing import Tuple, List
+from typing import Tuple, List, Final
 
 import h5py   # type: ignore
 import numpy as np  # type: ignore
 
 import gpx_stats
+
+
+NUM_POINTS_PATH: Final[int] = 25
+MIN_DISTANCE_M: Final[int] = 4
+MAX_LENGTH_M: Final[int] = 100
 
 
 _RNG = np.random.default_rng(seed=5)
@@ -58,45 +63,44 @@ def write_data_to_hdf5(gpx_data_list: List[gpx_stats.GpxSegmentStats],
 
     with h5py.File(file_name, "w") as hdf5file:
         dataset_items = {}
-        for name in gpx_stats.GpxSegmentStats.getHeader():
+        for name in gpx_stats.GpxSegmentStats.get_header():
             shape = (len_gpx_data_list, num_points_in_path, 3) if 'Path' in name else (len_gpx_data_list,)
             dataset_items[name] = hdf5file.create_dataset(name, shape, dtype=float)
 
         for i in range(len_gpx_data_list):
-            stats = gpx_data_list[i].toDict()
+            stats = gpx_data_list[i].to_dict()
             for name in stats.keys():
                 dataset_items[name][i] = stats[name]
 
 
-num_points_path = 25
-min_distance_m = 4
-max_length_m = 100
+if __name__ == '__main__':
+    base_folder, filter_key = parse_command_line_arguments()
+    print('Recursively searching for GPX files in \'{}\''.format(base_folder))
+    print('and filtering files that contain \'{}\' in their path.'.format(filter_key))
 
-base_folder, filter_key = parse_command_line_arguments()
-print('Recursively searching for GPX files in \'{}\''.format(base_folder))
-print('and filtering files that contain \'{}\' in their path.'.format(filter_key))
+    # Create list with all gpx files from base_folder that contain filter_key in their path
+    file_list_filtered = get_gpx_file_list(base_folder, filter_key)
 
-# Create list with all gpx files from base_folder that contain filter_key in their path
-file_list_filtered = get_gpx_file_list(base_folder, filter_key)
+    # Parse gpx files and return track segments
+    gpx_segments_list = gpx_stats.parse_gpx_files_return_segments(file_list_filtered)
 
-# Parse gpx files and return track segments
-gpx_segments_list = gpx_stats.parse_gpx_files_return_segments(file_list_filtered)
+    gpx_stats.smoothen_coordinates(gpx_segments_list)
 
-gpx_stats.smoothen_coordinates(gpx_segments_list)
+    gpx_segments_filtered_list = gpx_stats.filter_segments(gpx_segments_list,
+                                                           min_distance_m=MIN_DISTANCE_M)
+    gpx_split_segments_list = gpx_stats.split_segments_by_length(gpx_segments_filtered_list,
+                                                                 max_length_m=MAX_LENGTH_M)
 
-gpx_segments_filtered_list = gpx_stats.filter_segments(gpx_segments_list, min_distance_m=min_distance_m)
-gpx_split_segments_list = gpx_stats.split_segments_by_length(gpx_segments_filtered_list, max_length_m=max_length_m)
+    gpx_split_segments_list_filtered = gpx_stats.filter_bad_segments(gpx_split_segments_list)
 
-gpx_split_segments_list_filtered = gpx_stats.filter_bad_segments(gpx_split_segments_list)
+    # Get track statistics
+    gpx_data = gpx_stats.extract_stats(gpx_split_segments_list_filtered, num_points_path=NUM_POINTS_PATH)
 
-# Get track statistics
-gpx_data = gpx_stats.extract_stats(gpx_split_segments_list_filtered, num_points_path=num_points_path)
+    _RNG.shuffle(gpx_data)
 
-_RNG.shuffle(gpx_data)
+    max_idx_training_set: int = int(0.8 * len(gpx_data))
 
-max_idx_training_set = int(0.8 * len(gpx_data))
+    write_data_to_hdf5(gpx_data[:max_idx_training_set], 'hiking_data_training.hdf5', NUM_POINTS_PATH)
+    write_data_to_hdf5(gpx_data[max_idx_training_set:], 'hiking_data_test.hdf5', NUM_POINTS_PATH)
 
-write_data_to_hdf5(gpx_data[:max_idx_training_set], 'hiking_data_training.hdf5', num_points_path)
-write_data_to_hdf5(gpx_data[max_idx_training_set:], 'hiking_data_test.hdf5', num_points_path)
-
-print("Finished writing statistics about tracks to hdf5 file.")
+    print("Finished writing statistics about tracks to hdf5 file.")
