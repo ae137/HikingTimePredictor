@@ -1,6 +1,5 @@
-import math
 import collections
-from typing import List, Sequence, Dict, Union
+from typing import List, Dict, Union
 import statistics
 
 from gpxpy import parse                # type: ignore
@@ -8,7 +7,6 @@ from gpxpy.gpx import GPXTrackSegment  # type: ignore
 import numpy as np                     # type: ignore
 
 from gpx_data_utils import gpx_segment_to_array
-from utils import compute_standard_walking_time
 
 
 class PathFeature:
@@ -142,7 +140,7 @@ def get_segments(gpx_file_content_list) -> List[str]:
 def parse_gpx_files_return_segments(file_name_list: List[str]) -> List[GPXTrackSegment]:
     """
     Parse GPX files and return list of GPX track segments
-    
+
     :param: file_name_list: List of GPX files
     :return: List of GPXTrackSegment objects
     """
@@ -172,9 +170,13 @@ def smoothen_coordinates(segments_list: List[GPXTrackSegment], window_size: int 
                 segments_list[idx].points[i].latitude = \
                     statistics.mean([point.latitude for point in
                                      cloned_segment.points[(i-half_window_size):(i+half_window_size+1)]])
-                segments_list[idx].points[i].elevation = \
-                    statistics.mean([point.elevation for point in
-                                     cloned_segment.points[(i-half_window_size):(i+half_window_size+1)]])
+
+                # Smoothen elevations if all points in the window have elevation information
+                elevations = [point.elevation for point in
+                              cloned_segment.points[(i-half_window_size):(i+half_window_size+1)]]
+                if all(elevations):
+                    segments_list[idx].points[i].elevation = \
+                        statistics.mean(elevations)
 
             del segments_list[idx].points[:half_window_size]    # Delete first and last points
             del segments_list[idx].points[-half_window_size:]
@@ -233,6 +235,27 @@ def split_segments_by_length(gpx_segments_list: List[GPXTrackSegment], *, max_le
     return gpx_split_segments_list
 
 
+def filter_bad_segments(gpx_segments_list: List[GPXTrackSegment]) -> List[GPXTrackSegment]:
+    """
+    Filter segments with obviously insensible data
+
+    This function filters segments with unreasonable data, for example large differences in elevation, arising from
+    bad measurements.
+
+    Args:
+        gpx_segments_list: List of GPX segments
+
+    Returns:
+        Filtered list of GPX segments
+    """
+    def _elevation_predicate(segment: GPXTrackSegment, max_elevation_diff: int) -> bool:
+        uphill, downhill = segment.get_uphill_downhill()
+
+        return (uphill < max_elevation_diff and downhill < max_elevation_diff)
+
+    return list(filter(lambda segment: _elevation_predicate(segment, 500), gpx_segments_list))
+
+
 def extract_stats(gpx_segments_list: List[GPXTrackSegment], num_points_path: int = 25) -> List[GpxSegmentStats]:
     """
     Extract some properties of GPX track segments
@@ -240,11 +263,12 @@ def extract_stats(gpx_segments_list: List[GPXTrackSegment], num_points_path: int
     :param: gpx_segments_list:      List of GPX track segments to be processed
     :param: num_points_path:        Maximum number of points in path features
 
-    :return: List of GPX track segments that are all shorter than max_length_m
+    :return: List of features extracted from GPX tracks
     """
     gpx_stats = []
     for segment in gpx_segments_list:
         segment_stats = GpxSegmentStats(segment, num_points_path)
+
         if (segment_stats.moving_time >= segment_stats.stopped_time):
             gpx_stats.append(segment_stats)
 

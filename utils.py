@@ -1,4 +1,9 @@
+"""Helper functions for hiking time prediction project."""
+
+from typing import Optional
+
 import numpy as np               # type: ignore
+
 import pandas as pd              # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
 
@@ -22,16 +27,21 @@ def compute_standard_walking_time(length_m: float, elevation_gain_m: float, elev
         0.5 * min(walking_time_length_s, walking_time_up_down_s)
 
 
-def scatter_plot(ground_truth: np.array, predictions: np.array, label_text: str) -> None:
+def scatter_plot(ground_truth: np.array, predictions: np.array, label_text: str,
+                 max_val: Optional[float] = None) -> None:
     """
     Plot scatter plot of predictions vs. ground truth values.
 
-    :param: ground_truth:   Array containing ground truth data
-    :param: predictions:    Array containing predicted values
-    :param: label_text:     Label text for plot
+    Args:
+        ground_truth:   Array containing ground truth data
+        predictions:    Array containing predicted values
+        label_text:     Label text for plot
+        max_val:        Maximum value for x and y axis
     """
     plt.scatter(ground_truth, predictions, label='{} scatter plot'.format(label_text))
-    max_val = max([max(ground_truth), max(predictions)])
+    if not max_val:
+        max_val = max([max(ground_truth), max(predictions)])
+
     plt.xlabel('True Values [{}]'.format(label_text))
     plt.ylabel('Predictions [{}]'.format(label_text))
     plt.axis('square')

@@ -1,13 +1,9 @@
+"""Script for running inference on GPX tracks for predicting hiking time."""
+
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import os
-import csv
-import gpxpy                        # type: ignore
-
-import pathlib
 import argparse
 
-import matplotlib.pyplot as plt     # type: ignore
 import numpy as np                  # type: ignore
 import pandas as pd                 # type: ignore
 
@@ -16,9 +12,9 @@ import tensorflow as tf             # type: ignore
 import gpx_stats
 import utils
 
-num_points_path = 25
-min_distance_m = 4
-max_length_m = 100
+NUM_POINTS_PATH = 25
+MIN_DISTANCE_M = 4
+MAX_LENGTH_M = 100
 
 parser = argparse.ArgumentParser(description='Estimate walking time for GPX track of hiking route.')
 parser.add_argument('input_file', help='Name of input file.')
@@ -29,7 +25,8 @@ input_file = cmd_line_args['input_file']
 print("Estimating walking time for track in '{}'.".format(input_file))
 
 model_type = cmd_line_args['model_type']
-assert model_type in ['simple', 'recurrent', 'mixed'], "Undefined model type. Should be simple, recurrent or mixed."
+assert model_type in ['simple', 'recurrent', 'mixed'], \
+    "Undefined model type. Should be simple, recurrent or mixed."
 print("Using '{}' model.".format(model_type))
 
 # Parse gpx files and return track segments
@@ -37,20 +34,21 @@ gpx_track = list(gpx_stats.parse_gpx_files([input_file]))[0].tracks[0]  # Comple
 gpx_segments_list = gpx_stats.parse_gpx_files_return_segments([input_file])
 gpx_stats.smoothen_coordinates(gpx_segments_list)
 
-gpx_segments_filtered_list = gpx_stats.filter_segments(gpx_segments_list, min_distance_m=min_distance_m)
-gpx_split_segments_list = gpx_stats.split_segments_by_length(gpx_segments_filtered_list, max_length_m=max_length_m)
+gpx_segments_filtered_list = gpx_stats.filter_segments(gpx_segments_list, min_distance_m=MIN_DISTANCE_M)
+gpx_split_segments_list = gpx_stats.split_segments_by_length(gpx_segments_filtered_list,
+                                                             max_length_m=MAX_LENGTH_M)
 
 # Get track statistics
-gpx_data = gpx_stats.extract_stats(gpx_split_segments_list, num_points_path=num_points_path)
+gpx_data = gpx_stats.extract_stats(gpx_split_segments_list, num_points_path=NUM_POINTS_PATH)
 
 non_path_features = {}
-path_features = np.zeros(shape=(len(gpx_data), num_points_path, 3), dtype=np.float)
+path_features = np.zeros(shape=(len(gpx_data), NUM_POINTS_PATH, 3), dtype=np.float)
 for name in gpx_stats.GpxSegmentStats.getHeader():
     if 'Path' not in name:
         non_path_features[name] = np.zeros(shape=(len(gpx_data),), dtype=float)
 
-for i in range(len(gpx_data)):
-    stats = gpx_data[i].toDict()
+for i, gpx_data_item in enumerate(gpx_data):
+    stats = gpx_data_item.toDict()
     for name in stats.keys():
         if 'Path' in name:
             path_features[i] = stats[name]
@@ -59,7 +57,7 @@ for i in range(len(gpx_data)):
 
 non_path_features_df = pd.DataFrame.from_dict(non_path_features)
 
-train_stats = pd.read_csv('train_dataset_stats.csv', header=0, sep=' ', index_col=0) 
+train_stats = pd.read_csv('train_dataset_stats.csv', header=0, sep=' ', index_col=0)
 
 durations = non_path_features_df.pop('Duration')
 stopped_time = non_path_features_df.pop('StoppedTime')
@@ -76,9 +74,11 @@ if model_type == 'simple':
 elif model_type == 'recurrent':
     imported_model = tf.keras.models.load_model('model_hikingTimePrediction_recurrent.h5')
     predicted_hiking_times_s = imported_model.predict(path_features)
-else:
+elif model_type == 'mixed':
     imported_model = tf.keras.models.load_model('model_hikingTimePrediction_mixed.h5')
     predicted_hiking_times_s = imported_model.predict([normalized_non_path_features, path_features])
+else:
+    raise ValueError(f"Encountered bad model type {model_type}.")
 
 # Compute standard estimate for comparison
 track_length = gpx_track.length_2d()
@@ -93,4 +93,3 @@ print('The predicted total duration of the hike is',
       round(np.sum(predicted_hiking_times_s[:, 2]) / 3600, 2), 'h.')
 print('The result of the standard estimate is',
       round(standard_estimate_hiking_time / 3600, 2), 'h.')
-
