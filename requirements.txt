@@ -106,7 +106,7 @@ pycparser==2.20
 pycups==2.0.1
 pyenchant==3.2.0
 pyflakes==2.2.0
-Pygments==2.7.1
+Pygments==2.7.4
 PyGObject==3.38.0
 PyJWT==1.7.1
 pyparsing==2.4.7
