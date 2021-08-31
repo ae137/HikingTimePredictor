@@ -4,28 +4,25 @@ hiking times. More precisely, they predict the *Moving time*, *Stopped time* and
 The moving time does not include stopping or pausing. When using own records of GPX tracks for training,
 the models can estimate personalized hiking times.
 
-The estimates are based on simple statistics about GPX tracks, GPX tracks themselves or a combination of the two. The statistical features include the length of tracks, the total elevation gain and the total elevation loss. In order to be able to get good predictions based on a relatively small number of GPX tracks, the latter
+The estimates are based on simple statistics about GPX tracks, GPX tracks themselves or a combination of the two. The statistical features include include the length of tracks, the total elevation gain and the total elevation loss. In order to be able to get good predictions based on a relatively small number of GPX tracks, the latter
 are split into smaller pieces which are used as inputs for the model. The same preprocessing steps are applied during inference. A dataset of 40-50 GPX tracks allows to train models that predict hiking times better than standard formulas.
 
-The repository includes files for extracting data from tracks, training models and making predictions.
+The repository includes files for extracting data from tracks, training models 
+and making predictions. 
 
 ## Install anaconda environment
 Run
 
-`conda env create -n hikingTimePredictor`
+`conda env create -f environment.yml`
 
-and activate environment `hikingTimePredictor` by typing
+and activate environment `hikingTimePredictor` by typing 
 
-`source activate hikingTimePredictor`.
-
-Install dependencies via
-
-`pip install -r requirements.txt`.
+`source activate hikingTimePredictor`
 
 ## Prepare data
 Run
 
-`python prepare_data.py base_folder filter_key`
+`python prepareData.py base_folder filter_key`
 
 where `base_folder` is the folder in which the program searches recursively 
 for GPX tracks (with file names ending on gpx). It filters for files that contain

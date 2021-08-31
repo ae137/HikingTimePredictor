@@ -3,17 +3,13 @@
 import os
 import argparse
 import glob
-from typing import Tuple, List, Final
+from typing import Tuple, List
 
 import h5py   # type: ignore
 import numpy as np  # type: ignore
 
 import gpx_stats
-
-
-NUM_POINTS_PATH: Final[int] = 25
-MIN_DISTANCE_M: Final[int] = 4
-MAX_LENGTH_M: Final[int] = 100
+from config import data_preparation_config
 
 
 _RNG = np.random.default_rng(seed=5)
@@ -87,20 +83,25 @@ if __name__ == '__main__':
     gpx_stats.smoothen_coordinates(gpx_segments_list)
 
     gpx_segments_filtered_list = gpx_stats.filter_segments(gpx_segments_list,
-                                                           min_distance_m=MIN_DISTANCE_M)
+                                                           min_distance_m=data_preparation_config.min_distance_m)
     gpx_split_segments_list = gpx_stats.split_segments_by_length(gpx_segments_filtered_list,
-                                                                 max_length_m=MAX_LENGTH_M)
+                                                                 max_length_m=data_preparation_config.max_length_m)
 
-    gpx_split_segments_list_filtered = gpx_stats.filter_bad_segments(gpx_split_segments_list)
+    gpx_split_segments_list_filtered = gpx_stats.filter_bad_segments(gpx_split_segments_list, data_preparation_config)
 
     # Get track statistics
-    gpx_data = gpx_stats.extract_stats(gpx_split_segments_list_filtered, num_points_path=NUM_POINTS_PATH)
+    gpx_data = gpx_stats.extract_stats(gpx_split_segments_list_filtered,
+                                       num_points_path=data_preparation_config.num_points_path)
 
     _RNG.shuffle(gpx_data)
 
     max_idx_training_set: int = int(0.8 * len(gpx_data))
 
-    write_data_to_hdf5(gpx_data[:max_idx_training_set], 'hiking_data_training.hdf5', NUM_POINTS_PATH)
-    write_data_to_hdf5(gpx_data[max_idx_training_set:], 'hiking_data_test.hdf5', NUM_POINTS_PATH)
+    write_data_to_hdf5(gpx_data[:max_idx_training_set],
+                       'hiking_data_training.hdf5',
+                       data_preparation_config.num_points_path)
+    write_data_to_hdf5(gpx_data[max_idx_training_set:],
+                       'hiking_data_test.hdf5',
+                       data_preparation_config.num_points_path)
 
     print("Finished writing statistics about tracks to hdf5 file.")

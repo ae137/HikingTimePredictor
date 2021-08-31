@@ -1,12 +1,16 @@
 import unittest
 
-import numpy as np  # type: ignore
-import pandas as pd  # type: ignore
+import numpy as np    # type: ignore
+import pandas as pd   # type: ignore
 
 from gpxpy.gpx import GPXTrackPoint, GPXTrackSegment  # type: ignore
 
+from gpx_data_utils import (
+    gpx_point_to_array,
+    gpx_segment_to_array,
+    gpx_segment_from_array
+)
 from gpx_stats import convert_path_to_feature, smoothen_coordinates
-from gpx_data_utils import gpx_point_to_array, gpx_segment_from_array, gpx_segment_to_array
 
 
 class TestConvertPathToArray(unittest.TestCase):
@@ -34,8 +38,6 @@ class TestConvertPathToArray(unittest.TestCase):
 
 
 class TestSmoothenCoordinatesShort(unittest.TestCase):
-    """Tests for smoothen function with shorter segments."""
-
     def setUp(self):
         self.segment_1 = GPXTrackSegment([GPXTrackPoint(longitude=.1, latitude=1, elevation=10),
                                           GPXTrackPoint(longitude=.2, latitude=2, elevation=20),
@@ -52,14 +54,14 @@ class TestSmoothenCoordinatesShort(unittest.TestCase):
         smoothen_coordinates([GPXTrackSegment()])
 
     def test_segment_short_1(self):
-        inputs = [GPXTrackSegment(self.segment_1.points[0:3])]
-        smoothen_coordinates(inputs)
+        input = [GPXTrackSegment(self.segment_1.points[0:3])]
+        smoothen_coordinates(input)
 
         expected_result = [GPXTrackSegment([self.expected_1.points[0]])]
 
-        self.assertEqual(len(inputs), 1)
-        self.assertEqual(len(inputs[0].points), 1)
-        np.testing.assert_array_almost_equal(gpx_point_to_array(inputs[0].points[0]),
+        self.assertEqual(len(input), 1)
+        self.assertEqual(len(input[0].points), 1)
+        np.testing.assert_array_almost_equal(gpx_point_to_array(input[0].points[0]),
                                              gpx_point_to_array(expected_result[0].points[0]))
 
     def test_segment_short_2(self):
@@ -75,8 +77,6 @@ class TestSmoothenCoordinatesShort(unittest.TestCase):
 
 
 class TestSmoothenCoordinatesLonger(unittest.TestCase):
-    """Tests for smoothen function with longer segments."""
-
     def setUp(self):
         segment_1_as_array = np.random.normal(scale=5, size=(25, 3))
         segment_1 = gpx_segment_from_array(segment_1_as_array)
@@ -88,32 +88,24 @@ class TestSmoothenCoordinatesLonger(unittest.TestCase):
         self.segments_as_arrays = [segment_1_as_array, segment_2_as_array]
 
     def test_window_size_3(self):
-        """Test of smoothing function with window size of 3.
-
-        TODO: Merge with test with window_size==5
-        """
         expected_as_df = [pd.DataFrame(self.segments_as_arrays[i]).rolling(3).mean()[2:] for i in
                           range(len(self.segments_as_arrays))]
 
         smoothen_coordinates(self.segments, window_size=3)
 
-        for i, segment in enumerate(self.segments):
+        for i in range(len(self.segments)):
             np.testing.assert_array_almost_equal(expected_as_df[i].values,
-                                                 gpx_segment_to_array(segment))
+                                                 gpx_segment_to_array(self.segments[i]))
 
     def test_window_size_5(self):
-        """Test of smoothing function with window size of 5.
-
-        TODO: Merge with test with window_size==3
-        """
         expected_as_df = [pd.DataFrame(self.segments_as_arrays[i]).rolling(5).mean()[4:] for i in
                           range(len(self.segments_as_arrays))]
 
         smoothen_coordinates(self.segments, window_size=5)
 
-        for i, segment in enumerate(self.segments):
+        for i in range(len(self.segments)):
             np.testing.assert_array_almost_equal(expected_as_df[i].values,
-                                                 gpx_segment_to_array(segment))
+                                                 gpx_segment_to_array(self.segments[i]))
 
 
 if __name__ == '__main__':

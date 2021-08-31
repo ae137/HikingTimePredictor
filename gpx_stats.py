@@ -1,5 +1,3 @@
-"""Helper functions for computing statistical properties of GPX tracks."""
-
 import collections
 from typing import List, Dict, Union
 import statistics
@@ -8,6 +6,7 @@ from gpxpy import parse                # type: ignore
 from gpxpy.gpx import GPXTrackSegment  # type: ignore
 import numpy as np                     # type: ignore
 
+from config import DataPreparationConfig
 from gpx_data_utils import gpx_segment_to_array
 
 
@@ -18,12 +17,10 @@ class PathFeature:
 
     @property
     def shape(self):
-        """Get shape of path features as array."""
         return self.array_data.shape
 
     @property
     def data(self):
-        """Get path features as array."""
         return self.array_data
 
 
@@ -54,10 +51,10 @@ def convert_path_to_feature(segment: GPXTrackSegment, num_points_path: int) -> n
     # Compute center of gravity of path
     center = np.sum(data, axis=0) / len(segment.points)
     phi = np.arctan2(center[1], center[0])
-    rot_matrix = _get_rotation_matrix(-phi)      # Return points with angle that maps center to x-axis
+    m = _get_rotation_matrix(-phi)      # Return points with angle that maps center to x-axis
 
     for idx in range(len(segment.points)):
-        data[idx][0:2] = np.dot(rot_matrix, data[idx][0:2])
+        data[idx][0:2] = np.dot(m, data[idx][0:2])
 
     return data
 
@@ -72,7 +69,7 @@ def convert_paths_to_array(path_features: List[PathFeature]) -> np.array:
     return np.array([path_data.data for path_data in path_features])
 
 
-class GpxSegmentStats:
+class GpxSegmentStats(object):
     "Object collecting statistical properties of a GPX segment."
 
     def __init__(self, segment: GPXTrackSegment, num_points_path: int = 25) -> None:
@@ -129,8 +126,7 @@ def parse_gpx_files(file_name_list: List[str]):
             yield parse(gpx_file)
 
 
-def get_segments(gpx_file_content_list):
-    # TODO: Add docstring
+def get_segments(gpx_file_content_list) -> List[str]:
     gpx_segments_list = []
     for gpx_file_content in gpx_file_content_list:
         for track in gpx_file_content.tracks:
@@ -176,12 +172,11 @@ def smoothen_coordinates(segments_list: List[GPXTrackSegment], window_size: int 
                     statistics.mean([point.latitude for point in
                                      cloned_segment.points[(i-half_window_size):(i+half_window_size+1)]])
 
-                # Smoothen elevations if all points in the window have elevation information
+                # Smoothen elevations only if all points have elevation information
                 elevations = [point.elevation for point in
                               cloned_segment.points[(i-half_window_size):(i+half_window_size+1)]]
                 if all(elevations):
-                    segments_list[idx].points[i].elevation = \
-                        statistics.mean(elevations)
+                    segments_list[idx].points[i].elevation = statistics.mean(elevations)
 
             del segments_list[idx].points[:half_window_size]    # Delete first and last points
             del segments_list[idx].points[-half_window_size:]
@@ -213,7 +208,7 @@ def filter_segments(gpx_segments_list: List[GPXTrackSegment], min_distance_m: fl
     return gpx_filtered_segments_list
 
 
-def split_segments_by_length(gpx_segments_list: List[GPXTrackSegment], *, max_length_m: int = 100) \
+def split_segments_by_length(gpx_segments_list: List[GPXTrackSegment], *, max_length_m: float) \
         -> List[GPXTrackSegment]:
     """
     Split GPX track segments until all are shorter than max_length_m
@@ -240,7 +235,27 @@ def split_segments_by_length(gpx_segments_list: List[GPXTrackSegment], *, max_le
     return gpx_split_segments_list
 
 
-def filter_bad_segments(gpx_segments_list: List[GPXTrackSegment]) -> List[GPXTrackSegment]:
+def extract_stats(gpx_segments_list: List[GPXTrackSegment], num_points_path: int = 25) -> List[GpxSegmentStats]:
+    """
+    Extract some properties of GPX track segments
+
+    :param: gpx_segments_list:      List of GPX track segments to be processed
+    :param: num_points_path:        Maximum number of points in path features
+
+    :return: List of GPX track segments that are all shorter than max_length_m
+    """
+    gpx_stats = []
+    for segment in gpx_segments_list:
+        segment_stats = GpxSegmentStats(segment, num_points_path)
+        if (segment_stats.moving_time >= segment_stats.stopped_time):
+            gpx_stats.append(segment_stats)
+
+    return gpx_stats
+
+
+def filter_bad_segments(gpx_segments_list: List[GPXTrackSegment],
+                        data_preparation_config: DataPreparationConfig) \
+        -> List[GPXTrackSegment]:
     """
     Filter segments with obviously insensible data
 
@@ -249,36 +264,15 @@ def filter_bad_segments(gpx_segments_list: List[GPXTrackSegment]) -> List[GPXTra
 
     Args:
         gpx_segments_list: List of GPX segments
+        data_preparation_config: Config for data preparation
 
     Returns:
         Filtered list of GPX segments
     """
-    def _elevation_predicate(segment: GPXTrackSegment, max_elevation_diff: int) -> bool:
+    def _elevation_predicate(segment: GPXTrackSegment, max_elevation_diff: float) -> bool:
         uphill, downhill = segment.get_uphill_downhill()
 
         return uphill < max_elevation_diff and downhill < max_elevation_diff
 
-    return list(filter(lambda segment: _elevation_predicate(segment, 500), gpx_segments_list))
-
-
-def extract_stats(gpx_segments_list: List[GPXTrackSegment],
-                  num_points_path: int = 25) -> List[GpxSegmentStats]:
-    """
-    Extract some properties of GPX track segments
-
-    :param: gpx_segments_list:      List of GPX track segments to be processed
-    :param: num_points_path:        Maximum number of points in path features
-
-    :return: List of features extracted from GPX tracks
-    """
-    gpx_stats = []
-    for segment in gpx_segments_list:
-        segment_stats = GpxSegmentStats(segment, num_points_path)
-
-        # # Following filtering is only necessary, if prediction of stopped time and duration is attempted
-        # if (segment_stats.moving_time >= segment_stats.stopped_time):
-        #     gpx_stats.append(segment_stats)
-
-        gpx_stats.append(segment_stats)
-
-    return gpx_stats
+    return list(filter(lambda segment: _elevation_predicate(segment, data_preparation_config.max_elevation_diff_m),
+                       gpx_segments_list))

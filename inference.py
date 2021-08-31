@@ -1,7 +1,9 @@
-"""Script for running inference on GPX tracks for predicting hiking time."""
+# from __future__ import absolute_import, division, print_function, unicode_literals
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+from typing import Optional
+import gpxpy                        # type: ignore
 
+import pathlib
 import argparse
 
 import numpy as np                  # type: ignore
@@ -11,10 +13,7 @@ import tensorflow as tf             # type: ignore
 
 import gpx_stats
 import utils
-
-NUM_POINTS_PATH = 25
-MIN_DISTANCE_M = 4
-MAX_LENGTH_M = 100
+from config import data_preparation_config
 
 parser = argparse.ArgumentParser(description='Estimate walking time for GPX track of hiking route.')
 parser.add_argument('input_file', help='Name of input file.')
@@ -25,8 +24,7 @@ input_file = cmd_line_args['input_file']
 print("Estimating walking time for track in '{}'.".format(input_file))
 
 model_type = cmd_line_args['model_type']
-assert model_type in ['simple', 'recurrent', 'mixed'], \
-    "Undefined model type. Should be simple, recurrent or mixed."
+assert model_type in ['simple', 'recurrent', 'mixed'], "Undefined model type. Should be simple, recurrent or mixed."
 print("Using '{}' model.".format(model_type))
 
 # Parse gpx files and return track segments
@@ -34,21 +32,25 @@ gpx_track = list(gpx_stats.parse_gpx_files([input_file]))[0].tracks[0]  # Comple
 gpx_segments_list = gpx_stats.parse_gpx_files_return_segments([input_file])
 gpx_stats.smoothen_coordinates(gpx_segments_list)
 
-gpx_segments_filtered_list = gpx_stats.filter_segments(gpx_segments_list, min_distance_m=MIN_DISTANCE_M)
-gpx_split_segments_list = gpx_stats.split_segments_by_length(gpx_segments_filtered_list,
-                                                             max_length_m=MAX_LENGTH_M)
+gpx_segments_filtered_list = \
+    gpx_stats.filter_segments(gpx_segments_list,
+                              min_distance_m=data_preparation_config.min_distance_m)
+gpx_split_segments_list = \
+    gpx_stats.split_segments_by_length(gpx_segments_filtered_list,
+                                       max_length_m=data_preparation_config.max_length_m)
 
 # Get track statistics
-gpx_data = gpx_stats.extract_stats(gpx_split_segments_list, num_points_path=NUM_POINTS_PATH)
+gpx_data = gpx_stats.extract_stats(gpx_split_segments_list,
+                                   num_points_path=data_preparation_config.num_points_path)
 
 non_path_features = {}
-path_features = np.zeros(shape=(len(gpx_data), NUM_POINTS_PATH, 3), dtype=np.float)
+path_features = np.zeros(shape=(len(gpx_data), data_preparation_config.num_points_path, 3), dtype=np.float)
 for name in gpx_stats.GpxSegmentStats.get_header():
     if 'Path' not in name:
         non_path_features[name] = np.zeros(shape=(len(gpx_data),), dtype=float)
 
-for i, gpx_data_item in enumerate(gpx_data):
-    stats = gpx_data_item.to_dict()
+for i in range(len(gpx_data)):
+    stats = gpx_data[i].to_dict()
     for name in stats.keys():
         if 'Path' in name:
             path_features[i] = stats[name]
@@ -80,17 +82,24 @@ elif model_type == 'mixed':
 else:
     raise ValueError(f"Encountered bad model type {model_type}.")
 
-# TODO: Find better solution for fixing NaN from missing elevation data:
-predicted_hiking_times_s = np.nan_to_num(predicted_hiking_times_s, copy=False)
-
 # Compute standard estimate for comparison
 track_length = gpx_track.length_2d()
 track_uphill, track_downhill = gpx_track.get_uphill_downhill()
 standard_estimate_hiking_time = utils.compute_standard_walking_time(track_length,
                                                                     track_uphill,
                                                                     track_downhill)
+true_moving_time: Optional[float] = None
+try:
+    true_moving_time = gpx_track.get_moving_data().moving_time
+    if true_moving_time is not None and true_moving_time > 0:
+        print(f"The actual moving time based on timestamps was {round(true_moving_time / 3600, 2)} h.")
+
+except Exception as e:
+    print("Track does not contain timestamps.")
 
 print('The predicted moving time for the hike is',
       round(np.sum(predicted_hiking_times_s[:, 0]) / 3600, 2), 'h.')
+print('The predicted total duration of the hike is',
+      round(np.sum(predicted_hiking_times_s[:, 2]) / 3600, 2), 'h.')
 print('The result of the standard estimate is',
       round(standard_estimate_hiking_time / 3600, 2), 'h.')

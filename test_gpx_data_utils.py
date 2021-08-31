@@ -7,9 +7,9 @@ from gpxpy.gpx import GPXTrackPoint, GPXTrackSegment  # type: ignore
 from gpx_data_utils import (
     gpx_point_from_array,
     gpx_point_to_array,
-    gpx_segment_from_data_frame,
     gpx_segment_to_array,
-    gpx_segment_from_array
+    gpx_segment_from_array,
+    gpx_segment_from_data_frame
 )
 
 

@@ -1,5 +1,3 @@
-"""Helper functions for dealing with GPX data."""
-
 import numpy as np                                    # type: ignore
 import pandas as pd                                   # type: ignore
 from gpxpy.gpx import GPXTrackPoint, GPXTrackSegment  # type: ignore
@@ -51,18 +49,15 @@ def gpx_segment_to_data_frame(segment: GPXTrackSegment) -> pd.DataFrame:
     return pd.DataFrame(gpx_segment_to_array(segment), columns=columns)
 
 
-def gpx_segment_from_data_frame(df_input: pd.DataFrame) -> GPXTrackSegment:
+def gpx_segment_from_data_frame(df: pd.DataFrame) -> GPXTrackSegment:
     """
     Create GPX track segment from data in Pandas DataFrame
 
-    Args:
-        df_input: Pandas dataframe containing GPX data
-
-    Returns:
-        GPX track segment
+    :param: df: Pandas dataframe containing GPX data
+    :return: GPX track segment
     """
     columns = ['longitude', 'latitude', 'elevation']
 
-    assert columns == list(df_input.columns), "Wrong columns or wrong order of columns in dataframe"
+    assert columns == list(df.columns), "Wrong columns or wrong order of columns in dataframe"
 
-    return gpx_segment_from_array(df_input.values)
+    return gpx_segment_from_array(df.values)

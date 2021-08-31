@@ -1,0 +1,3 @@
+- Restrict to moving time
+- Introduce negative log likelihood as loss function
+- Use increments for LSTM inputs instead relative coordinates with respect to beginning of track
