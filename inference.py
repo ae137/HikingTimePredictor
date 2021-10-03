@@ -1,14 +1,8 @@
-# from __future__ import absolute_import, division, print_function, unicode_literals
-
-from typing import Optional
-import gpxpy                        # type: ignore
-
-import pathlib
 import argparse
+from typing import Optional
 
 import numpy as np                  # type: ignore
 import pandas as pd                 # type: ignore
-
 import tensorflow as tf             # type: ignore
 
 import gpx_stats
@@ -95,7 +89,7 @@ try:
         print(f"The actual moving time based on timestamps was {round(true_moving_time / 3600, 2)} h.")
 
 except Exception as e:
-    print("Track does not contain timestamps.")
+    print("Track does not contain timestamps.", e)
 
 print('The predicted moving time for the hike is',
       round(np.sum(predicted_hiking_times_s[:, 0]) / 3600, 2), 'h.')

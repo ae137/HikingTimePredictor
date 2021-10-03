@@ -82,3 +82,12 @@ def plot_history(history):
     plt.yscale('log')
     plt.legend()
     plt.show()
+
+    if "lr" in hist.columns:
+        plt.figure()
+        plt.xlabel('Epoch')
+        plt.ylabel('Learning rate')
+        plt.plot(hist['epoch'], hist['lr'], label="Learning rate")
+        plt.yscale('log')
+        plt.legend()
+        plt.show()
