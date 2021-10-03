@@ -63,6 +63,9 @@ ground_truth_times = pd.concat([moving_time, stopped_time, durations], axis=1)
 # Normalize data for inference:
 normalized_non_path_features = ((non_path_features_df - train_stats['mean']) / train_stats['std']).values
 
+# TODO: Find better fix for points with missing elevation information in paths at the start of tracks
+path_features[np.isnan(path_features)] = 0.
+
 # Load model and predict hiking time
 if model_type == 'simple':
     imported_model = tf.keras.models.load_model('model_hikingTimePrediction_simple.h5')
@@ -93,7 +96,5 @@ except Exception as e:
 
 print('The predicted moving time for the hike is',
       round(np.sum(predicted_hiking_times_s[:, 0]) / 3600, 2), 'h.')
-print('The predicted total duration of the hike is',
-      round(np.sum(predicted_hiking_times_s[:, 2]) / 3600, 2), 'h.')
 print('The result of the standard estimate is',
       round(standard_estimate_hiking_time / 3600, 2), 'h.')

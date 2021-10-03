@@ -66,7 +66,7 @@ def convert_paths_to_array(path_features: List[PathFeature]) -> np.array:
     :param: path_features:  List of PathFeature objects
     :return:                Array of shape (len(path_features), path_features[0].shape)
     """
-    return np.array([path_data.data for path_data in path_features])
+    return np.stack([path_data.data for path_data in path_features], axis=0)
 
 
 class GpxSegmentStats(object):
