@@ -66,16 +66,19 @@ normalized_non_path_features = ((non_path_features_df - train_stats['mean']) / t
 # TODO: Find better fix for points with missing elevation information in paths at the start of tracks
 path_features[np.isnan(path_features)] = 0.
 
+normalized_non_path_features = normalized_non_path_features.astype(np.float32)
+path_features = path_features.astype(np.float32)
+
 # Load model and predict hiking time
 if model_type == 'simple':
-    imported_model = tf.keras.models.load_model('model_hikingTimePrediction_simple.h5')
-    predicted_hiking_times_s = imported_model.predict(normalized_non_path_features)
+    imported_model = tf.saved_model.load('model_hikingTimePrediction_simple')
+    predicted_hiking_times_s = imported_model(normalized_non_path_features)
 elif model_type == 'recurrent':
-    imported_model = tf.keras.models.load_model('model_hikingTimePrediction_recurrent.h5')
-    predicted_hiking_times_s = imported_model.predict(path_features)
+    imported_model = tf.saved_model.load('model_hikingTimePrediction_recurrent')
+    predicted_hiking_times_s = imported_model(path_features)
 elif model_type == 'mixed':
-    imported_model = tf.keras.models.load_model('model_hikingTimePrediction_mixed.h5')
-    predicted_hiking_times_s = imported_model.predict([normalized_non_path_features, path_features])
+    imported_model = tf.saved_model.load('model_hikingTimePrediction_mixed')
+    predicted_hiking_times_s = imported_model([normalized_non_path_features, path_features])
 else:
     raise ValueError(f"Encountered bad model type {model_type}.")
 

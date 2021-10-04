@@ -57,7 +57,7 @@ def plot_error_hist(ground_truth: np.array, predictions: np.array, label_text: s
     plt.show()
 
 
-def plot_history(history):
+def plot_history(history, mse_column_name: str, mae_column_name: str):
     """
     Plot learning curve.
 
@@ -68,17 +68,17 @@ def plot_history(history):
 
     plt.figure()
     plt.xlabel('Epoch')
-    plt.ylabel('Mean Abs Error [MovingTime]')
-    plt.plot(hist['epoch'], hist['mean_absolute_error'], label='Train Error')
-    plt.plot(hist['epoch'], hist['val_mean_absolute_error'], label='Val Error')
+    plt.ylabel('Mean Absolute Error [MovingTime]')
+    plt.plot(hist['epoch'], hist[mae_column_name], label='Train Error')
+    plt.plot(hist['epoch'], hist['val_' + mae_column_name], label='Val Error')
     plt.yscale('log')
     plt.legend()
 
     plt.figure()
     plt.xlabel('Epoch')
-    plt.ylabel('Mean Square Error [$MovingTime^2$]')
-    plt.plot(hist['epoch'], hist['mean_squared_error'], label='Train Error')
-    plt.plot(hist['epoch'], hist['val_mean_squared_error'], label='Val Error')
+    plt.ylabel('Mean Squared Error [$MovingTime^2$]')
+    plt.plot(hist['epoch'], hist[mse_column_name], label='Train Error')
+    plt.plot(hist['epoch'], hist['val_' + mse_column_name], label='Val Error')
     plt.yscale('log')
     plt.legend()
     plt.show()
