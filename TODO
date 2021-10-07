@@ -1,3 +1,4 @@
-- Restrict to moving time
-- Introduce negative log likelihood as loss function
 - Use increments for LSTM inputs instead relative coordinates with respect to beginning of track
+- Clean up and unify code
+- Optimize models with ray
+- Build simple web interface

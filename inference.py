@@ -72,13 +72,13 @@ path_features = path_features.astype(np.float32)
 # Load model and predict hiking time
 if model_type == 'simple':
     imported_model = tf.saved_model.load('model_hikingTimePrediction_simple')
-    predicted_hiking_times_s = imported_model(normalized_non_path_features)
+    predictions = imported_model(normalized_non_path_features)
 elif model_type == 'recurrent':
     imported_model = tf.saved_model.load('model_hikingTimePrediction_recurrent')
-    predicted_hiking_times_s = imported_model(path_features)
+    predictions = imported_model(path_features)
 elif model_type == 'mixed':
     imported_model = tf.saved_model.load('model_hikingTimePrediction_mixed')
-    predicted_hiking_times_s = imported_model([normalized_non_path_features, path_features])
+    predictions = imported_model([normalized_non_path_features, path_features])
 else:
     raise ValueError(f"Encountered bad model type {model_type}.")
 
@@ -98,6 +98,8 @@ except Exception as e:
     print("Track does not contain timestamps.", e)
 
 print('The predicted moving time for the hike is',
-      round(np.sum(predicted_hiking_times_s[:, 0]) / 3600, 2), 'h.')
+      round(np.sum(predictions[:, 0]) / 3600, 2), 'h.')
+print("The predicted uncertainty for the hiking time is",
+      round(np.sqrt(np.sum(np.exp(predictions[:, 1]))) / 3600, 2), "h.")
 print('The result of the standard estimate is',
       round(standard_estimate_hiking_time / 3600, 2), 'h.')
