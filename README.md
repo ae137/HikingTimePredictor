@@ -15,6 +15,10 @@ and activate environment `hikingTimePredictor` by typing
 
 `source activate hikingTimePredictor`
 
+and run
+
+`pip install -r requirements.txt`.
+
 ## Prepare data
 Run
 
