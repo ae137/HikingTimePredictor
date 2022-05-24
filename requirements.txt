@@ -1,4 +1,4 @@
-tensorflow==2.5.1
+tensorflow==2.6.4
 git+https://github.com/ae137/nn_uncertainty_estimation.git@develop#egg=nn_uncertainty_estimation
 jupyter==1.0.0
 gpxpy==1.4.2
