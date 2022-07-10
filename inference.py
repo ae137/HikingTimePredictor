@@ -99,7 +99,7 @@ except Exception as e:
 
 print('The predicted moving time for the hike is',
       round(np.sum(predictions[:, 0]) / 3600, 2), 'h.')
-print("The predicted uncertainty for the hiking time is",
+print("The predicted standard deviation for the hiking time is",
       round(np.sqrt(np.sum(np.exp(predictions[:, 1]))) / 3600, 2), "h.")
 print('The result of the standard estimate is',
       round(standard_estimate_hiking_time / 3600, 2), 'h.')
