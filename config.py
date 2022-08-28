@@ -11,11 +11,13 @@ class DataPreparationConfig:
     min_distance_m: float
     max_length_m: float
     max_elevation_diff_m: float
+    filter_bad_segments: bool
 
 
-data_preparation_config: Final[DataPreparationConfig] = DataPreparationConfig(
+DEFAULT_DATA_PREPARATION_CONFIG: Final[DataPreparationConfig] = DataPreparationConfig(
     num_points_path=25,
-    min_distance_m=4.,
-    max_length_m=100.,
-    max_elevation_diff_m=100.
+    min_distance_m=4.0,
+    max_length_m=100.0,
+    max_elevation_diff_m=100.0,
+    filter_bad_segments=True,
 )

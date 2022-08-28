@@ -1,6 +1,6 @@
-import numpy as np                                    # type: ignore
-import pandas as pd                                   # type: ignore
-from gpxpy.gpx import GPXTrackPoint, GPXTrackSegment  # type: ignore
+import numpy as np
+import pandas as pd
+from gpxpy.gpx import GPXTrackPoint, GPXTrackSegment
 
 
 def gpx_point_to_array(point: GPXTrackPoint) -> np.array:
@@ -10,7 +10,9 @@ def gpx_point_to_array(point: GPXTrackPoint) -> np.array:
 
 def gpx_point_from_array(point_data: np.array) -> GPXTrackPoint:
     "Create a GPXTrackPoint from an array."
-    return GPXTrackPoint(longitude=point_data[0], latitude=point_data[1], elevation=point_data[2])
+    return GPXTrackPoint(
+        longitude=point_data[0], latitude=point_data[1], elevation=point_data[2]
+    )
 
 
 def gpx_segment_to_array(segment: GPXTrackSegment) -> np.array:
@@ -30,9 +32,13 @@ def gpx_segment_from_array(segment_data: np.array) -> GPXTrackSegment:
     :param: segment_data: Track data as array
     :return: GPX track segment
     """
-    assert segment_data.shape[1] == 3, "Length of data items does not have the right shape"
+    assert (
+        segment_data.shape[1] == 3
+    ), "Length of data items does not have the right shape"
 
-    points = [gpx_point_from_array(segment_data[i]) for i in range(segment_data.shape[0])]
+    points = [
+        gpx_point_from_array(segment_data[i]) for i in range(segment_data.shape[0])
+    ]
 
     return GPXTrackSegment(points)
 
@@ -44,7 +50,7 @@ def gpx_segment_to_data_frame(segment: GPXTrackSegment) -> pd.DataFrame:
     :param: segment: GPX track segment
     :return: Pandas dataframe
     """
-    columns = ['longitude', 'latitude', 'elevation']
+    columns = ["longitude", "latitude", "elevation"]
 
     return pd.DataFrame(gpx_segment_to_array(segment), columns=columns)
 
@@ -56,8 +62,10 @@ def gpx_segment_from_data_frame(df: pd.DataFrame) -> GPXTrackSegment:
     :param: df: Pandas dataframe containing GPX data
     :return: GPX track segment
     """
-    columns = ['longitude', 'latitude', 'elevation']
+    columns = ["longitude", "latitude", "elevation"]
 
-    assert columns == list(df.columns), "Wrong columns or wrong order of columns in dataframe"
+    assert columns == list(
+        df.columns
+    ), "Wrong columns or wrong order of columns in dataframe"
 
     return gpx_segment_from_array(df.values)
